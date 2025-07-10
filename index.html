@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Vocabulary Learner with Firebase</title>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+  <style>
+    body {
+      font-family: sans-serif;
+      background-color: #eff6ff;
+      margin: 0;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    h1, h2 {
+      color: #1e3a8a;
+    }
+    nav {
+      margin-bottom: 20px;
+    }
+    nav a {
+      margin: 0 10px;
+      text-decoration: none;
+      color: #2563eb;
+      font-weight: bold;
+    }
+    .input-group {
+      display: flex;
+      gap: 10px;
+      margin: 20px 0;
+      flex-wrap: wrap;
+    }
+    input, select {
+      padding: 8px;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+    }
+    button {
+      padding: 8px 16px;
+      background-color: #2563eb;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+    .card {
+      background-color: white;
+      padding: 16px;
+      margin: 10px;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      width: 300px;
+      position: relative;
+      height: 200px;
+      perspective: 1000px;
+      cursor: pointer;
+    }
+    .card-inner {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      text-align: center;
+      transition: transform 0.6s;
+      transform-style: preserve-3d;
+    }
+    .card.flipped .card-inner {
+      transform: rotateY(180deg);
+    }
+    .card-front, .card-back {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      backface-visibility: hidden;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+      box-sizing: border-box;
+    }
+    .card-back {
+      transform: rotateY(180deg);
+      background-color: #f8fafc;
+    }
+    .card h2 {
+      margin: 0;
+      color: #1d4ed8;
+      font-size: 24px;
+      margin-bottom: 10px;
+    }
+    .card p {
+      margin: 8px 0 0;
+      color: #374151;
+      font-size: 16px;
+      line-height: 1.5;
+    }
+    .delete-btn {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background: red;
+      color: white;
+      border: none;
+      padding: 5px 10px;
+      border-radius: 8px;
+      cursor: pointer;
+      z-index: 10;
+    }
+    .topic-badge {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      background: #3b82f6;
+      color: white;
+      padding: 4px 8px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: bold;
+    }
+    .card-back .topic-badge {
+      transform: rotateY(180deg);
+    }
+    .cards-container {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      position: relative;
+      width: 100%;
+      max-width: 400px;
+      margin: 0 auto;
+    }
+    .navigation-controls {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin: 20px 0;
+      width: 100%;
+      max-width: 400px;
+    }
+    .nav-btn {
+      background: #2563eb;
+      color: white;
+      border: none;
+      padding: 10px 15px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 18px;
+    }
+    .nav-btn:disabled {
+      background: #9ca3af;
+      cursor: not-allowed;
+    }
+    .word-counter {
+      color: #374151;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <h1>Vocabulary Learner</h1>
+  <nav>
+    <a href="index.html">Vocabulary</a>
+    <a href="quiz.html">Quiz</a>
+  </nav>
+  <div class="input-group">
+    <input type="text" id="wordInput" placeholder="Enter new word">
+    <input type="text" id="meaningInput" placeholder="Enter meaning">
+    <input type="text" id="topicInput" placeholder="Topic">
+    <button onclick="addWord()">Add</button>
+  </div>
+
+  <div class="input-group">
+    <label for="topicFilter">Filter by Topic:</label>
+    <select id="topicFilter"></select>
+  </div>
+
+  <div id="vocabContainer" class="cards-container"></div>
+
+  <div class="navigation-controls">
+    <button id="prevBtn" class="nav-btn" onclick="prevWord()">Previous</button>
+    <span class="word-counter">Word 1 of 10</span>
+    <button id="nextBtn" class="nav-btn" onclick="nextWord()">Next</button>
+  </div>
+
+  <script>
+    const firebaseConfig = { 
+    apiKey : "AIzaSyDG_CgDD5B6aCuiihqjBLnhOj2c8Uc21xQ" , 
+    authDomain : "wordlearn2904.firebaseapp.com" , 
+    projectId : "wordlearn2904" , 
+    storageBucket : "wordlearn2904.firebasestorage.app" , 
+    messagingSenderId : "995440223989" , 
+    appId : "1:995440223989:web:835b7af5fd0fa2e29807bc" , 
+    measurementId : "G-G2WJHJHF78" 
+};
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    let currentTopic = "all";
+    let unsubscribe = null;
+    let allWords = [];
+    let currentWordIndex = 0;
+
+    // Real-time listener for vocab words
+    function listenWords() {
+      if (unsubscribe) unsubscribe();
+      let query = db.collection("vocab").orderBy("topic");
+      if (currentTopic !== "all") {
+        query = query.where("topic", "==", currentTopic);
+      }
+      unsubscribe = query.onSnapshot(snapshot => {
+        const container = document.getElementById("vocabContainer");
+        container.innerHTML = "";
+        console.log("Loaded docs:", snapshot.size);
+        allWords = [];
+        snapshot.forEach(doc => {
+          const data = doc.data();
+          console.log("Doc data:", data);
+          allWords.push({ id: doc.id, ...data });
+        });
+        currentWordIndex = 0;
+        showCurrentWord();
+        updateNavigation();
+      });
+    }
+
+    function showCurrentWord() {
+      const container = document.getElementById("vocabContainer");
+      container.innerHTML = "";
+      
+      if (allWords.length === 0) {
+        container.innerHTML = '<p style="text-align: center; color: #6b7280;">No words available</p>';
+        return;
+      }
+
+      const data = allWords[currentWordIndex];
+      const card = document.createElement("div");
+      card.className = "card";
+      card.innerHTML = `
+        <button class="delete-btn" onclick="deleteWord('${data.id}')">X</button>
+        <div class="card-inner">
+          <div class="card-front">
+            <div class="topic-badge">${data.topic}</div>
+            <h2>${data.word}</h2>
+            <p>Click to see meaning</p>
+          </div>
+          <div class="card-back">
+            <div class="topic-badge">${data.topic}</div>
+            <h2>${data.word}</h2>
+            <p>${data.meaning}</p>
+          </div>
+        </div>
+      `;
+      card.addEventListener("click", function(e) {
+        if (e.target.classList.contains("delete-btn")) {
+          return; // Don't flip if clicking delete button
+        }
+        this.classList.toggle("flipped");
+      });
+      container.appendChild(card);
+    }
+
+    function updateNavigation() {
+      const prevBtn = document.getElementById("prevBtn");
+      const nextBtn = document.getElementById("nextBtn");
+      const counter = document.querySelector(".word-counter");
+
+      prevBtn.disabled = currentWordIndex === 0;
+      nextBtn.disabled = currentWordIndex === allWords.length - 1;
+      
+      if (allWords.length > 0) {
+        counter.textContent = `Word ${currentWordIndex + 1} of ${allWords.length}`;
+      } else {
+        counter.textContent = "No words";
+      }
+    }
+
+    function prevWord() {
+      if (currentWordIndex > 0) {
+        currentWordIndex--;
+        showCurrentWord();
+        updateNavigation();
+      }
+    }
+
+    function nextWord() {
+      if (currentWordIndex < allWords.length - 1) {
+        currentWordIndex++;
+        showCurrentWord();
+        updateNavigation();
+      }
+    }
+
+    // Load topics only once on page load or when a new topic is added
+    async function loadTopicsToFilter() {
+      const snapshot = await db.collection("vocab").get();
+      const topics = new Set();
+      snapshot.forEach(doc => {
+        topics.add(doc.data().topic || "General");
+      });
+      const select = document.getElementById("topicFilter");
+      select.innerHTML = '<option value="all">All Topics</option>';
+      topics.forEach(topic => {
+        const option = document.createElement("option");
+        option.value = topic;
+        option.textContent = topic;
+        select.appendChild(option);
+      });
+      select.value = "all"; // Ensure 'all' is selected on load
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+      document.getElementById("topicFilter").addEventListener("change", function() {
+        currentTopic = this.value;
+        listenWords();
+      });
+    });
+
+    function addWord() {
+      const word = document.getElementById("wordInput").value.trim();
+      const meaning = document.getElementById("meaningInput").value.trim();
+      const topic = document.getElementById("topicInput").value.trim() || "General";
+      if (word && meaning) {
+        db.collection("vocab").add({ word, meaning, topic, level: 1 }).then(() => {
+          document.getElementById("wordInput").value = "";
+          document.getElementById("meaningInput").value = "";
+          document.getElementById("topicInput").value = "";
+          loadTopicsToFilter(); // Only reload topics if a new topic was added
+        });
+      }
+    }
+
+    function deleteWord(id) {
+      db.collection("vocab").doc(id).delete();
+    }
+
+    // Initial load
+    loadTopicsToFilter();
+    listenWords();
+  </script>
+</body>
+</html>
