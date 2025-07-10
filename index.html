@@ -255,6 +255,11 @@
     <select id="topicFilter"></select>
   </div>
 
+  <div class="input-group">
+    <label for="searchInput">Search Word:</label>
+    <input type="text" id="searchInput" placeholder="Type to search words..." />
+  </div>
+
   <div id="vocabContainer" class="cards-container"></div>
 
   <div class="navigation-controls">
@@ -281,6 +286,7 @@
     let unsubscribe = null;
     let allWords = [];
     let currentWordIndex = 0;
+    let filteredWords = [];
 
     // Real-time listener for vocab words
     function listenWords() {
@@ -299,6 +305,7 @@
           console.log("Doc data:", data);
           allWords.push({ id: doc.id, ...data });
         });
+        filteredWords = [...allWords];
         currentWordIndex = 0;
         showCurrentWord();
         updateNavigation();
@@ -309,12 +316,12 @@
       const container = document.getElementById("vocabContainer");
       container.innerHTML = "";
       
-      if (allWords.length === 0) {
+      if (filteredWords.length === 0) {
         container.innerHTML = '<p style="text-align: center; color: #6b7280;">No words available</p>';
         return;
       }
 
-      const data = allWords[currentWordIndex];
+      const data = filteredWords[currentWordIndex];
       const card = document.createElement("div");
       card.className = "card";
       card.innerHTML = `
@@ -347,10 +354,10 @@
       const counter = document.querySelector(".word-counter");
 
       prevBtn.disabled = currentWordIndex === 0;
-      nextBtn.disabled = currentWordIndex === allWords.length - 1;
+      nextBtn.disabled = currentWordIndex === filteredWords.length - 1;
       
-      if (allWords.length > 0) {
-        counter.textContent = `Word ${currentWordIndex + 1} of ${allWords.length}`;
+      if (filteredWords.length > 0) {
+        counter.textContent = `Word ${currentWordIndex + 1} of ${filteredWords.length}`;
       } else {
         counter.textContent = "No words";
       }
@@ -365,11 +372,27 @@
     }
 
     function nextWord() {
-      if (currentWordIndex < allWords.length - 1) {
+      if (currentWordIndex < filteredWords.length - 1) {
         currentWordIndex++;
         showCurrentWord();
         updateNavigation();
       }
+    }
+
+    function filterWords() {
+      const searchTerm = document.getElementById("searchInput").value.toLowerCase().trim();
+      if (searchTerm === "") {
+        filteredWords = [...allWords];
+      } else {
+        filteredWords = allWords.filter(word => 
+          word.word.toLowerCase().includes(searchTerm) || 
+          word.meaning.toLowerCase().includes(searchTerm) ||
+          word.topic.toLowerCase().includes(searchTerm)
+        );
+      }
+      currentWordIndex = 0;
+      showCurrentWord();
+      updateNavigation();
     }
 
     // Load topics only once on page load or when a new topic is added
@@ -395,6 +418,7 @@
         currentTopic = this.value;
         listenWords();
       });
+      document.getElementById("searchInput").addEventListener("input", filterWords);
     });
 
     function addWord() {
