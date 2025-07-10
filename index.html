@@ -8,56 +8,95 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
   <style>
     body {
-      font-family: sans-serif;
+      font-family: 'Segoe UI', 'Roboto', 'Arial', sans-serif;
       background-color: #eff6ff;
       margin: 0;
-      padding: 20px;
+      padding: 0;
+      min-height: 100vh;
       display: flex;
       flex-direction: column;
       align-items: center;
+      justify-content: flex-start;
     }
-    h1, h2 {
+    h1 {
       color: #1e3a8a;
+      margin-top: 32px;
+      margin-bottom: 8px;
+      font-size: 2.5rem;
+      letter-spacing: 1px;
     }
     nav {
-      margin-bottom: 20px;
+      margin-bottom: 32px;
     }
     nav a {
-      margin: 0 10px;
+      margin: 0 16px;
       text-decoration: none;
       color: #2563eb;
       font-weight: bold;
+      font-size: 1.1rem;
+      transition: color 0.2s;
+    }
+    nav a:hover {
+      color: #1d4ed8;
     }
     .input-group {
       display: flex;
       gap: 10px;
       margin: 20px 0;
       flex-wrap: wrap;
+      justify-content: center;
     }
     input, select {
-      padding: 8px;
+      padding: 10px;
       border-radius: 8px;
       border: 1px solid #ccc;
+      font-size: 1rem;
     }
     button {
-      padding: 8px 16px;
+      padding: 10px 20px;
       background-color: #2563eb;
       color: white;
       border: none;
       border-radius: 8px;
       cursor: pointer;
+      font-size: 1rem;
+      transition: background 0.2s;
+    }
+    button:hover:not(:disabled) {
+      background-color: #1d4ed8;
+    }
+    .cards-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      width: 100%;
+      max-width: 600px;
+      min-height: 350px;
+      margin: 0 auto 24px auto;
     }
     .card {
       background-color: white;
-      padding: 16px;
-      margin: 10px;
-      border-radius: 12px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-      width: 300px;
+      padding: 0;
+      margin: 0;
+      border-radius: 18px;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.12);
+      width: 100%;
+      max-width: 600px;
+      min-height: 350px;
+      height: 40vw;
+      max-height: 420px;
       position: relative;
-      height: 200px;
-      perspective: 1000px;
+      perspective: 1200px;
       cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: box-shadow 0.2s;
+    }
+    .card:hover {
+      box-shadow: 0 8px 32px rgba(37,99,235,0.15);
     }
     .card-inner {
       position: relative;
@@ -66,6 +105,9 @@
       text-align: center;
       transition: transform 0.6s;
       transform-style: preserve-3d;
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
     .card.flipped .card-inner {
       transform: rotateY(180deg);
@@ -79,7 +121,7 @@
       flex-direction: column;
       justify-content: center;
       align-items: center;
-      padding: 20px;
+      padding: 40px 24px 24px 24px;
       box-sizing: border-box;
     }
     .card-back {
@@ -87,76 +129,111 @@
       background-color: #f8fafc;
     }
     .card h2 {
-      margin: 0;
+      margin: 0 0 16px 0;
       color: #1d4ed8;
-      font-size: 24px;
-      margin-bottom: 10px;
+      font-size: 2.2rem;
+      font-weight: 700;
+      letter-spacing: 1px;
     }
     .card p {
-      margin: 8px 0 0;
+      margin: 0;
       color: #374151;
-      font-size: 16px;
-      line-height: 1.5;
+      font-size: 1.2rem;
+      line-height: 1.6;
     }
     .delete-btn {
       position: absolute;
-      top: 10px;
-      right: 10px;
-      background: red;
+      top: 18px;
+      right: 18px;
+      background: #ef4444;
       color: white;
       border: none;
-      padding: 5px 10px;
+      padding: 7px 14px;
       border-radius: 8px;
       cursor: pointer;
       z-index: 10;
+      font-size: 1rem;
+      font-weight: bold;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+      transition: background 0.2s;
+    }
+    .delete-btn:hover {
+      background: #dc2626;
     }
     .topic-badge {
       position: absolute;
-      top: 10px;
-      left: 10px;
+      top: 18px;
+      left: 18px;
       background: #3b82f6;
       color: white;
-      padding: 4px 8px;
-      border-radius: 12px;
-      font-size: 12px;
+      padding: 6px 16px;
+      border-radius: 14px;
+      font-size: 1rem;
       font-weight: bold;
+      letter-spacing: 0.5px;
+      box-shadow: 0 1px 4px rgba(59,130,246,0.08);
     }
     .card-back .topic-badge {
       transform: rotateY(180deg);
-    }
-    .cards-container {
-      display: flex;
-      flex-wrap: wrap;
-      justify-content: center;
-      position: relative;
-      width: 100%;
-      max-width: 400px;
-      margin: 0 auto;
     }
     .navigation-controls {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin: 20px 0;
+      margin: 24px auto 0 auto;
       width: 100%;
-      max-width: 400px;
+      max-width: 600px;
     }
     .nav-btn {
       background: #2563eb;
       color: white;
       border: none;
-      padding: 10px 15px;
+      padding: 12px 24px;
       border-radius: 8px;
       cursor: pointer;
-      font-size: 18px;
+      font-size: 1.2rem;
+      font-weight: bold;
+      transition: background 0.2s;
     }
     .nav-btn:disabled {
       background: #9ca3af;
       cursor: not-allowed;
     }
+    .nav-btn:hover:not(:disabled) {
+      background: #1d4ed8;
+    }
     .word-counter {
       color: #374151;
       font-weight: bold;
+      font-size: 1.1rem;
+      letter-spacing: 0.5px;
+    }
+    @media (max-width: 700px) {
+      .cards-container, .card, .navigation-controls {
+        max-width: 98vw;
+        min-height: 220px;
+      }
+      .card {
+        height: 60vw;
+        min-height: 220px;
+        max-height: 320px;
+      }
+      .card-front, .card-back {
+        padding: 24px 8px 8px 8px;
+      }
+      .topic-badge, .delete-btn {
+        top: 10px;
+        left: 10px;
+        right: 10px;
+        font-size: 0.9rem;
+        padding: 4px 10px;
+      }
+      .card h2 {
+        font-size: 1.3rem;
+      }
+      .card p {
+        font-size: 1rem;
+      }
     }
   </style>
 </head>
